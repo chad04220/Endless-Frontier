@@ -1,0 +1,11 @@
+Babylon.js 9.25.0
+Project: https://github.com/BabylonJS/Babylon.js
+Exact-version license: https://github.com/BabylonJS/Babylon.js/blob/9.25.0/license.md
+Licensed under Apache License 2.0; the full license and copyright notice are
+included in LICENSES/Babylon.js-LICENSE.md.
+
+The bundled global/UMD build includes a compatibility helper that rejects
+unsupported dynamic imports. No engine downloads are needed to play.
+
+Google Fonts are not bundled or requested by this portable edition. Its CSS
+uses the original project's system font fallbacks instead.

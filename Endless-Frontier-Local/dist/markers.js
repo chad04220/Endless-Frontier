@@ -1,0 +1,14 @@
+const B=globalThis.BABYLON,V=B.Vector3,clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+export class TrafficMarkers{
+ constructor(container){this.container=container;this.entries=new Map();this.identity=B.Matrix.Identity();}
+ clear(){for(const e of this.entries.values())e.node.remove();this.entries.clear();}
+ update(items,flight,camera,scene,engine,dt,width,height,sensor=null){const range=Math.max(700,flight.speed*4.5),active=new Set(),viewport=camera.viewport.toGlobal(engine.getRenderWidth(),engine.getRenderHeight()),view=camera.getViewMatrix(true),transform=scene.getTransformMatrix(),cx=width/2,cy=(96+height-180)/2,halfW=Math.max(60,cx-35),halfH=Math.max(50,(height-276)/2),smoothing=1-Math.exp(-dt*18);let closest=Infinity;
+  for(const item of items){const distance=V.Distance(item.root.position,flight.position);if(distance>range&&sensor?.target!==item)continue;closest=Math.min(closest,distance);active.add(item);let e=this.entries.get(item);if(!e){const node=document.createElement('div'),symbol=document.createElement('span'),label=document.createElement('small');node.className='traffic-marker '+item.kind;symbol.className='marker-symbol';label.className='marker-label';node.append(symbol,label);this.container.append(node);e={node,symbol,label,x:null,y:null,labelTimer:1};this.entries.set(item,e);}
+   const projected=V.Project(item.root.position,this.identity,transform,viewport);let x=projected.x/engine.getRenderWidth()*width,y=projected.y/engine.getRenderHeight()*height,edge=projected.z<=0||projected.z>=1||x<35||x>width-35||y<96||y>height-180,angle=0;
+   if(edge){const p=V.TransformCoordinates(item.root.position,view);let dx=p.x,dy=-p.y;if(p.z<0)dy=Math.abs(dy)+Math.max(1,-p.z*.25);if(Math.abs(dx)+Math.abs(dy)<.001)dy=1;const fit=Math.min(halfW/Math.max(.001,Math.abs(dx)),halfH/Math.max(.001,Math.abs(dy)));x=cx+dx*fit;y=cy+dy*fit;angle=Math.atan2(dy,dx)*180/Math.PI;}
+   e.x=e.x===null?x:e.x+(x-e.x)*smoothing;e.y=e.y===null?y:e.y+(y-e.y)*smoothing;e.node.style.transform=`translate3d(${e.x}px,${e.y}px,0)`;e.node.classList.toggle('edge',edge);e.node.classList.toggle('seeker-target',sensor?.target===item);e.node.classList.toggle('seeker-locked',sensor?.target===item&&sensor.locked);e.node.classList.toggle('urgent',distance<Math.max(70,flight.speed*.8));e.node.classList.toggle('compact',item.kind==='bird'&&distance>100&&!edge);e.symbol.textContent=edge?'›':item.kind==='bird'?'◇':item.kind==='pickup'?'⊕':'⌖';e.symbol.style.transform=edge?`rotate(${angle}deg)`:'';e.labelTimer+=dt;
+   if(e.labelTimer>.1){const name=item.kind==='bird'&&!edge?'':item.def.name.toUpperCase()+' · ';e.label.textContent=name+Math.round(distance)+' M';e.node.title=item.def.name+' · '+Math.round(distance)+' meters';e.labelTimer=0;}
+  }
+  for(const[item,e]of this.entries)if(!active.has(item)){e.node.remove();this.entries.delete(item);}return{count:active.size,closest};
+ }
+}

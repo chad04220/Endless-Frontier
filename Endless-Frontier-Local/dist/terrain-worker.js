@@ -1,0 +1,2 @@
+import{configureWorld,craters,buildTerrainBuffers}from'./terrain.js?v=balance-8';
+self.onmessage=event=>{const job=event.data;try{configureWorld(job.seed);craters.length=0;craters.push(...job.craters);const buffers=buildTerrainBuffers(job.cx,job.cz);self.postMessage({key:job.key,cx:job.cx,cz:job.cz,epoch:job.epoch,revision:job.revision,requestId:job.requestId,buffers},Object.values(buffers).map(a=>a.buffer));}catch(error){self.postMessage({key:job.key,epoch:job.epoch,revision:job.revision,requestId:job.requestId,error:String(error)});}};

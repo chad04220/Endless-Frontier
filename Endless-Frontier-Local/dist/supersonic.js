@@ -1,0 +1,14 @@
+import{soundSpeed}from'./balance.js?v=balance-8';
+export{soundSpeed}from'./balance.js?v=balance-8';
+const B=globalThis.BABYLON;
+export class MachState{
+ constructor(){this.reset();}
+ reset(){this.mach=0;this.armed=true;this.cooldown=0;}
+ update(speed,altitude,dt){this.mach=speed/soundSpeed(altitude);this.cooldown=Math.max(0,this.cooldown-dt);if(this.mach<.94)this.armed=true;const boom=this.mach>=1&&this.armed&&this.cooldown===0;if(boom){this.armed=false;this.cooldown=5;}return boom;}
+}
+export class SupersonicEffects{
+ constructor(scene,audio){this.scene=scene;this.audio=audio;this.state=new MachState();this.root=new B.TransformNode('Mach vapor envelope',scene);this.root.rotationQuaternion=B.Quaternion.Identity();this.material=new B.StandardMaterial('condensation vapor',scene);this.material.diffuseColor=new B.Color3(.91,.98,1);this.material.emissiveColor=new B.Color3(.25,.3,.34);this.material.specularColor=B.Color3.Black();this.material.backFaceCulling=false;this.material.disableDepthWrite=true;this.material.alpha=.13;this.cones=[];for(let i=0;i<3;i++){const cone=B.MeshBuilder.CreateCylinder('sonic condensation cone '+i,{height:1,diameterTop:.03,diameterBottom:2,tessellation:72,cap:B.Mesh.NO_CAP},scene);cone.parent=this.root;cone.rotation.x=Math.PI/2;cone.position.z=-1-i*.32;cone.material=this.material;cone.isPickable=false;this.cones.push(cone);}this.root.setEnabled(false);this.pulse=B.MeshBuilder.CreateTorus('sonic shock front',{diameter:2,thickness:.025,tessellation:72},scene);this.pulse.rotationQuaternion=B.Quaternion.Identity();this.pulse.material=this.material;this.pulse.isPickable=false;this.pulse.setEnabled(false);this.age=0;this.envelope=0;}
+ update(plane,flight,dt){const boom=this.state.update(flight.speed,flight.position.y,dt),mach=this.state.mach;if(boom){this.audio.sonicBoom();this.age=.8;this.pulse.position.copyFrom(plane.root.position);this.pulse.rotationQuaternion.copyFrom(plane.root.rotationQuaternion.multiply(B.Quaternion.RotationAxis(B.Axis.X,Math.PI/2)));this.pulse.setEnabled(true);}const target=mach>.94?(mach<1?((mach-.94)/.06)*.38:Math.max(.24,1-(mach-1)*.7)):0;this.envelope+=(target-this.envelope)*(1-Math.exp(-dt*7));this.root.setEnabled(this.envelope>.015);this.root.position.copyFrom(plane.root.position);this.root.rotationQuaternion.copyFrom(plane.root.rotationQuaternion);this.material.alpha=this.envelope*.13;const radius=Math.min(9,12/Math.sqrt(Math.max(1.8,mach*mach-1)));for(let i=0;i<3;i++)this.cones[i].scaling.set(radius*(1+i*.025),12+i*.3,radius*(1+i*.025));if(this.age>0){this.age=Math.max(0,this.age-dt);this.pulse.scaling.setAll(3+(1-this.age/.8)*55);this.pulse.setEnabled(this.age>0);}return boom;}
+ clear(){this.state.reset();this.envelope=0;this.age=0;this.root.setEnabled(false);this.pulse.setEnabled(false);}
+ rebase(dx,dz){this.pulse.position.x-=dx;this.pulse.position.z-=dz;}
+}
